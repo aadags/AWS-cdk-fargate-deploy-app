@@ -20,13 +20,6 @@ public class AlbFargateApp {
                         .build())
                 .build());
 
-//        new CodePipelineStack(app, "CodePipelineStack", StackProps.builder()
-//                .env(Environment.builder()
-//                        .account("296191284360")
-//                        .region("us-east-1")
-//                        .build())
-//                .build());
-
         app.synth();
     }
 }
