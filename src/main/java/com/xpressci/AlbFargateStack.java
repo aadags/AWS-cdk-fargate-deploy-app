@@ -65,14 +65,15 @@ public class AlbFargateStack extends Stack {
                     .image(ContainerImage.fromEcrRepository(Repository.fromRepositoryArn(this, "MyRepo", System.getenv("FARGATE_REPO_ARN"))))
                     .containerName("web")
                     .enableLogging(true)
-                    .containerPort(Integer.valueOf(System.getenv("FARGATE_APP_PORT")))
                     .environment(env)
                     .build();
         } else {
             applicationLoadBalancedTaskImageOptions = ApplicationLoadBalancedTaskImageOptions.builder()
                     .image(ContainerImage.fromEcrRepository(Repository.fromRepositoryArn(this, "MyRepo", System.getenv("FARGATE_REPO_ARN"))))
                     .containerName("web")
+                    .containerPort(Integer.valueOf(System.getenv("FARGATE_APP_PORT")))
                     .enableLogging(true)
+                    .environment(env)
                     .build();
         }
 
