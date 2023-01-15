@@ -34,43 +34,43 @@ public class AlbFargateStack extends Stack {
 
         IVpc vpc;
 
-        if(System.getProperty("FARGATE_VPC") == null) {
+        if(System.getenv("FARGATE_VPC") == "new") {
             vpc = new Vpc(this, "MyVpc", VpcProps.builder().maxAzs(2).build());
         } else {
             vpc = Vpc.fromLookup(this, "VpcLookup", VpcLookupOptions.builder()
-                    .vpcId(System.getProperty("FARGATE_VPC"))
+                    .vpcId(System.getenv("FARGATE_VPC"))
                     .build());
         }
 
         // Create the ECS Service
         Cluster cluster = new Cluster(this, "FargateCluster", ClusterProps.builder().vpc(vpc)
-                .clusterName(System.getProperty("FARGATE_CLUSTER", "UAT")).build());
+                .clusterName(System.getenv("FARGATE_CLUSTER")).build());
 
         //SSL
-        ICertificate certificate = Certificate.fromCertificateArn(this, "Cert", System.getProperty("FARGATE_SSL"));
+        ICertificate certificate = Certificate.fromCertificateArn(this, "Cert", System.getenv("FARGATE_SSL"));
 
         //Environment
         ObjectMapper mapper = new ObjectMapper();
         Map<String, String> env = new HashMap<>();
         try {
-            env = mapper.readValue(System.getProperty("FARGATE_ENV"), Map.class);
+            env = mapper.readValue(System.getenv("FARGATE_ENV"), Map.class);
         } catch (IOException e) {
             e.printStackTrace();
         }
 
         //image
         ApplicationLoadBalancedTaskImageOptions applicationLoadBalancedTaskImageOptions;
-        if(System.getProperty("FARGATE_APP_PORT") != null) {
+        if(System.getenv("FARGATE_APP_PORT").isEmpty()) {
             applicationLoadBalancedTaskImageOptions = ApplicationLoadBalancedTaskImageOptions.builder()
-                    .image(ContainerImage.fromEcrRepository(Repository.fromRepositoryArn(this, "MyRepo", System.getProperty("FARGATE_REPO_ARN", "test"))))
+                    .image(ContainerImage.fromEcrRepository(Repository.fromRepositoryArn(this, "MyRepo", System.getenv("FARGATE_REPO_ARN"))))
                     .containerName("web")
                     .enableLogging(true)
-                    .containerPort(Integer.valueOf(System.getProperty("FARGATE_APP_PORT")))
+                    .containerPort(Integer.valueOf(System.getenv("FARGATE_APP_PORT")))
                     .environment(env)
                     .build();
         } else {
             applicationLoadBalancedTaskImageOptions = ApplicationLoadBalancedTaskImageOptions.builder()
-                    .image(ContainerImage.fromEcrRepository(Repository.fromRepositoryArn(this, "MyRepo", System.getProperty("FARGATE_REPO_ARN", "test"))))
+                    .image(ContainerImage.fromEcrRepository(Repository.fromRepositoryArn(this, "MyRepo", System.getenv("FARGATE_REPO_ARN"))))
                     .containerName("web")
                     .enableLogging(true)
                     .build();
@@ -79,26 +79,26 @@ public class AlbFargateStack extends Stack {
         // Create a load-balanced Fargate service and make it public
         ApplicationLoadBalancedFargateService loadBalancedFargateService = ApplicationLoadBalancedFargateService.Builder.create(this, "MyFargateService")
                 .cluster(cluster)           // Required
-                .cpu(Integer.valueOf(System.getProperty("FARGATE_CPU", "256")))                   // Default is 256
-                .desiredCount(Integer.valueOf(System.getProperty("FARGATE_SCALE", "1")))            // Default is 1
+                .cpu(Integer.valueOf(System.getenv("FARGATE_CPU")))                   // Default is 256
+                .desiredCount(Integer.valueOf(System.getenv("FARGATE_SCALE")))            // Default is 1
                 .taskImageOptions(applicationLoadBalancedTaskImageOptions)
-                .memoryLimitMiB(Integer.valueOf(System.getProperty("FARGATE_MEMORY", "512")))       // Default is 512
+                .memoryLimitMiB(Integer.valueOf(System.getenv("FARGATE_MEMORY")))       // Default is 512
                 .publicLoadBalancer(true)   // Default is true
                 .loadBalancerName(cluster.getClusterName())
-                .serviceName(System.getProperty("FARGATE_APP_NAME"))
+                .serviceName(System.getenv("FARGATE_APP_NAME"))
                 .certificate(certificate)
                 .sslPolicy(SslPolicy.RECOMMENDED)
-                .domainName(System.getProperty("FARGATE_URL"))
+                .domainName(System.getenv("FARGATE_URL"))
                 .build();
 
         loadBalancedFargateService.getTargetGroup().configureHealthCheck(
-                HealthCheck.builder().path(System.getProperty("FARGATE_HEALTH_CHECK")).healthyThresholdCount(2).unhealthyThresholdCount(5).build()
+                HealthCheck.builder().path(System.getenv("FARGATE_HEALTH_CHECK")).healthyThresholdCount(2).unhealthyThresholdCount(5).build()
         );
 
-        if(System.getProperty("FARGATE_AUTO_SCALE") != "0") {
+        if(System.getenv("FARGATE_AUTO_SCALE") != "0") {
             ScalableTaskCount scalableTarget = loadBalancedFargateService.getService().autoScaleTaskCount(
                     EnableScalingProps.builder().minCapacity(1)
-                            .maxCapacity(Integer.valueOf(System.getProperty("FARGATE_AUTO_SCALE"))).build()
+                            .maxCapacity(Integer.valueOf(System.getenv("FARGATE_AUTO_SCALE"))).build()
             );
 
             scalableTarget.scaleOnCpuUtilization("CpuScaling", CpuUtilizationScalingProps.builder()
