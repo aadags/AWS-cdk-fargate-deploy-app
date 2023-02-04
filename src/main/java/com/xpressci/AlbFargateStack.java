@@ -47,16 +47,16 @@ public class AlbFargateStack extends Stack {
                 .clusterName(System.getenv("FARGATE_CLUSTER")).build());
 
         //SSL
-        ICertificate certificate = Certificate.fromCertificateArn(this, "Cert", System.getenv("FARGATE_SSL"));
+        ICertificate certificate = Certificate.fromCertificateArn(this, "Certificate", System.getenv("FARGATE_SSL"));
 
         //Environment
-        ObjectMapper mapper = new ObjectMapper();
-        Map<String, String> env = new HashMap<>();
-        try {
-            env = mapper.readValue(System.getenv("FARGATE_ENV"), Map.class);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+//        ObjectMapper mapper = new ObjectMapper();
+//        Map<String, String> env = new HashMap<>();
+//        try {
+//            env = mapper.readValue(System.getenv("FARGATE_ENV"), Map.class);
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
 
         //image
         ApplicationLoadBalancedTaskImageOptions applicationLoadBalancedTaskImageOptions;
@@ -65,7 +65,7 @@ public class AlbFargateStack extends Stack {
                     .image(ContainerImage.fromEcrRepository(Repository.fromRepositoryArn(this, "MyRepo", System.getenv("FARGATE_REPO_ARN"))))
                     .containerName("web")
                     .enableLogging(true)
-                    .environment(env)
+//                    .environment(env)
                     .build();
         } else {
             applicationLoadBalancedTaskImageOptions = ApplicationLoadBalancedTaskImageOptions.builder()
@@ -73,7 +73,7 @@ public class AlbFargateStack extends Stack {
                     .containerName("web")
                     .containerPort(Integer.valueOf(System.getenv("FARGATE_APP_PORT")))
                     .enableLogging(true)
-                    .environment(env)
+//                    .environment(env)
                     .build();
         }
 
