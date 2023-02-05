@@ -34,7 +34,7 @@ public class AlbFargateStack extends Stack {
 
         IVpc vpc;
 
-        if(System.getenv("FARGATE_VPC") == "new") {
+        if(System.getenv("FARGATE_VPC").equalsIgnoreCase("new")) {
             vpc = new Vpc(this, "MyVpc", VpcProps.builder().maxAzs(2).build());
         } else {
             vpc = Vpc.fromLookup(this, "VpcLookup", VpcLookupOptions.builder()
