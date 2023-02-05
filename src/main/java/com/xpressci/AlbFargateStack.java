@@ -89,7 +89,7 @@ public class AlbFargateStack extends Stack {
                 .serviceName(System.getenv("FARGATE_APP_NAME"))
                 .certificate(certificate)
                 .sslPolicy(SslPolicy.RECOMMENDED)
-                .domainName(System.getenv("FARGATE_URL"))
+//                .domainName(System.getenv("FARGATE_URL"))
                 .build();
 
         loadBalancedFargateService.getTargetGroup().configureHealthCheck(
