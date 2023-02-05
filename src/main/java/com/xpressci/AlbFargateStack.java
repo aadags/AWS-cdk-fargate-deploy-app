@@ -88,7 +88,6 @@ public class AlbFargateStack extends Stack {
                 .loadBalancerName(cluster.getClusterName())
                 .serviceName(System.getenv("FARGATE_APP_NAME"))
                 .certificate(certificate)
-                .sslPolicy(SslPolicy.RECOMMENDED)
                 .circuitBreaker(DeploymentCircuitBreaker.builder().rollback(true).build())
 //                .domainName(System.getenv("FARGATE_URL"))
                 .build();
