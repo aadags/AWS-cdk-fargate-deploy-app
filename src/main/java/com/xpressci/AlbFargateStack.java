@@ -96,7 +96,7 @@ public class AlbFargateStack extends Stack {
                 HealthCheck.builder().path(System.getenv("FARGATE_HEALTH_CHECK")).healthyThresholdCount(2).unhealthyThresholdCount(5).build()
         );
 
-        if(System.getenv("FARGATE_AUTO_SCALE") != "0") {
+        if(!System.getenv("FARGATE_AUTO_SCALE").equalsIgnoreCase("0")) {
             ScalableTaskCount scalableTarget = loadBalancedFargateService.getService().autoScaleTaskCount(
                     EnableScalingProps.builder().minCapacity(1)
                             .maxCapacity(Integer.valueOf(System.getenv("FARGATE_AUTO_SCALE"))).build()
