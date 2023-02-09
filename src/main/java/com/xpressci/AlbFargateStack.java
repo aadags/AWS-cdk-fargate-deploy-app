@@ -18,6 +18,8 @@ import software.amazon.awscdk.services.ecs.*;
 import software.amazon.awscdk.services.ecs.patterns.*;
 import software.amazon.awscdk.services.elasticloadbalancingv2.HealthCheck;
 import software.amazon.awscdk.services.elasticloadbalancingv2.SslPolicy;
+import software.amazon.awscdk.services.route53.*;
+import software.amazon.awscdk.services.route53.targets.LoadBalancerTarget;
 import software.constructs.Construct;
 
 import java.io.IOException;
@@ -77,6 +79,9 @@ public class AlbFargateStack extends Stack {
                     .build();
         }
 
+        IHostedZone zone = HostedZone.fromLookup(this, "DomainZone", HostedZoneProviderProps.builder()
+                .domainName(System.getenv("FARGATE_URL")).build());
+
         // Create a load-balanced Fargate service and make it public
         ApplicationLoadBalancedFargateService loadBalancedFargateService = ApplicationLoadBalancedFargateService.Builder.create(this, "MyFargateService")
                 .cluster(cluster)           // Required
@@ -85,16 +90,23 @@ public class AlbFargateStack extends Stack {
                 .taskImageOptions(applicationLoadBalancedTaskImageOptions)
                 .memoryLimitMiB(Integer.valueOf(System.getenv("FARGATE_MEMORY")))       // Default is 512
                 .publicLoadBalancer(true)   // Default is true
+                .assignPublicIp(true)
                 .loadBalancerName(cluster.getClusterName())
                 .serviceName(System.getenv("FARGATE_APP_NAME"))
                 .certificate(certificate)
                 .circuitBreaker(DeploymentCircuitBreaker.builder().rollback(true).build())
-//                .domainName(System.getenv("FARGATE_URL"))
+                .domainName(System.getenv("FARGATE_URL"))
+                .domainZone(zone)
                 .build();
+
+        ARecord.Builder.create(this, "ARecord")
+                .target(RecordTarget.fromAlias(new LoadBalancerTarget(loadBalancedFargateService.getLoadBalancer()))).zone(zone).build();
 
         loadBalancedFargateService.getTargetGroup().configureHealthCheck(
                 HealthCheck.builder().path(System.getenv("FARGATE_HEALTH_CHECK")).healthyThresholdCount(2).unhealthyThresholdCount(5).build()
         );
+
+//        loadBalancedFargateService.getListener().
 
         if(!System.getenv("FARGATE_AUTO_SCALE").equalsIgnoreCase("0")) {
             ScalableTaskCount scalableTarget = loadBalancedFargateService.getService().autoScaleTaskCount(
