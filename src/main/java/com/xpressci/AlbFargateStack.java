@@ -99,8 +99,8 @@ public class AlbFargateStack extends Stack {
                 .domainZone(zone)
                 .build();
 
-        ARecord.Builder.create(this, "ARecord")
-                .target(RecordTarget.fromAlias(new LoadBalancerTarget(loadBalancedFargateService.getLoadBalancer()))).zone(zone).build();
+//        ARecord.Builder.create(this, "ARecord")
+//                .target(RecordTarget.fromAlias(new LoadBalancerTarget(loadBalancedFargateService.getLoadBalancer()))).zone(zone).build();
 
         loadBalancedFargateService.getTargetGroup().configureHealthCheck(
                 HealthCheck.builder().path(System.getenv("FARGATE_HEALTH_CHECK")).healthyThresholdCount(2).unhealthyThresholdCount(5).build()
