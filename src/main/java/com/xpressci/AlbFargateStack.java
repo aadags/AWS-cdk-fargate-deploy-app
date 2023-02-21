@@ -90,6 +90,7 @@ public class AlbFargateStack extends Stack {
         tarList.add(ApplicationTargetProps.builder()
                 .containerPort(80)
                 .hostHeader(System.getenv("FARGATE_URL"))
+                .priority(1)
                 .build());
 
         // Create a load-balanced Fargate service and make it public
