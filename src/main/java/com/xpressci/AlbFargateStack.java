@@ -1,7 +1,6 @@
 package com.xpressci;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.sun.tools.javac.util.List;
 import software.amazon.awscdk.*;
 import software.amazon.awscdk.services.applicationautoscaling.EnableScalingProps;
 import software.amazon.awscdk.services.certificatemanager.Certificate;
@@ -16,6 +15,7 @@ import software.amazon.awscdk.services.ec2.*;
 import software.amazon.awscdk.services.ecr.Repository;
 import software.amazon.awscdk.services.ecs.*;
 import software.amazon.awscdk.services.ecs.patterns.*;
+import software.amazon.awscdk.services.elasticloadbalancingv2.ApplicationProtocol;
 import software.amazon.awscdk.services.elasticloadbalancingv2.HealthCheck;
 import software.amazon.awscdk.services.elasticloadbalancingv2.SslPolicy;
 import software.amazon.awscdk.services.route53.*;
@@ -23,7 +23,9 @@ import software.amazon.awscdk.services.route53.targets.LoadBalancerTarget;
 import software.constructs.Construct;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class AlbFargateStack extends Stack {
@@ -61,19 +63,21 @@ public class AlbFargateStack extends Stack {
 //        }
 
         //image
-        ApplicationLoadBalancedTaskImageOptions applicationLoadBalancedTaskImageOptions;
+        ApplicationLoadBalancedTaskImageProps applicationLoadBalancedTaskImageProps;
         if(System.getenv("FARGATE_APP_PORT").isEmpty()) {
-            applicationLoadBalancedTaskImageOptions = ApplicationLoadBalancedTaskImageOptions.builder()
+            applicationLoadBalancedTaskImageProps = ApplicationLoadBalancedTaskImageProps.builder()
                     .image(ContainerImage.fromEcrRepository(Repository.fromRepositoryArn(this, "MyRepo", System.getenv("FARGATE_REPO_ARN"))))
                     .containerName("web")
                     .enableLogging(true)
 //                    .environment(env)
                     .build();
         } else {
-            applicationLoadBalancedTaskImageOptions = ApplicationLoadBalancedTaskImageOptions.builder()
+            List<Integer> envList = new ArrayList<Integer>();
+            envList.add(Integer.valueOf(System.getenv("FARGATE_APP_PORT")));
+            applicationLoadBalancedTaskImageProps = ApplicationLoadBalancedTaskImageProps.builder()
                     .image(ContainerImage.fromEcrRepository(Repository.fromRepositoryArn(this, "MyRepo", System.getenv("FARGATE_REPO_ARN"))))
                     .containerName("web")
-                    .containerPort(Integer.valueOf(System.getenv("FARGATE_APP_PORT")))
+                    .containerPorts(envList)
                     .enableLogging(true)
 //                    .environment(env)
                     .build();
@@ -82,31 +86,47 @@ public class AlbFargateStack extends Stack {
         IHostedZone zone = HostedZone.fromLookup(this, "DomainZone", HostedZoneProviderProps.builder()
                 .domainName(System.getenv("FARGATE_URL")).build());
 
+        ApplicationListenerProps applicationListenerProps = ApplicationListenerProps.builder()
+                .name("name")
+                // the properties below are optional
+                .certificate(certificate)
+                .port(443)
+                .protocol(ApplicationProtocol.HTTPS)
+                .sslPolicy(SslPolicy.RECOMMENDED)
+                .build();
+
+        List<ApplicationTargetProps> tarList = new ArrayList<ApplicationTargetProps>();
+        tarList.add(ApplicationTargetProps.builder()
+                .containerPort(80)
+                .listener(applicationListenerProps.getName())
+                .hostHeader(System.getenv("FARGATE_URL"))
+                .build());
+
         // Create a load-balanced Fargate service and make it public
-        ApplicationLoadBalancedFargateService loadBalancedFargateService = ApplicationLoadBalancedFargateService.Builder.create(this, "MyFargateService")
+        ApplicationMultipleTargetGroupsFargateService loadBalancedFargateService = ApplicationMultipleTargetGroupsFargateService.Builder.create(this, "MyFargateService")
                 .cluster(cluster)           // Required
                 .cpu(Integer.valueOf(System.getenv("FARGATE_CPU")))                   // Default is 256
                 .desiredCount(Integer.valueOf(System.getenv("FARGATE_SCALE")))            // Default is 1
-                .taskImageOptions(applicationLoadBalancedTaskImageOptions)
+                .taskImageOptions(applicationLoadBalancedTaskImageProps)
                 .memoryLimitMiB(Integer.valueOf(System.getenv("FARGATE_MEMORY")))       // Default is 512
-                .publicLoadBalancer(true)   // Default is true
                 .assignPublicIp(true)
-                .loadBalancerName(cluster.getClusterName())
                 .serviceName(System.getenv("FARGATE_APP_NAME"))
-                .certificate(certificate)
-                .circuitBreaker(DeploymentCircuitBreaker.builder().rollback(true).build())
-                .domainName(System.getenv("FARGATE_URL"))
-                .domainZone(zone)
+                .targetGroups(tarList)
                 .build();
 
-//        ARecord.Builder.create(this, "ARecord")
-//                .target(RecordTarget.fromAlias(new LoadBalancerTarget(loadBalancedFargateService.getLoadBalancer()))).zone(zone).build();
+//        loadBalancedFargateService.getLoadBalancers().get(0)
 
-        loadBalancedFargateService.getTargetGroup().configureHealthCheck(
+//                .certificate(certificate)
+//                .circuitBreaker(DeploymentCircuitBreaker.builder().rollback(true).build())
+//                .domainName(System.getenv("FARGATE_URL"))
+//                .domainZone(zone)
+
+        ARecord.Builder.create(this, "ARecord")
+                .target(RecordTarget.fromAlias(new LoadBalancerTarget(loadBalancedFargateService.getLoadBalancers().get(0)))).zone(zone).build();
+
+        loadBalancedFargateService.getTargetGroups().get(0).configureHealthCheck(
                 HealthCheck.builder().path(System.getenv("FARGATE_HEALTH_CHECK")).healthyThresholdCount(2).unhealthyThresholdCount(5).build()
         );
-
-//        loadBalancedFargateService.getListener().
 
         if(!System.getenv("FARGATE_AUTO_SCALE").equalsIgnoreCase("0")) {
             ScalableTaskCount scalableTarget = loadBalancedFargateService.getService().autoScaleTaskCount(
