@@ -86,14 +86,14 @@ public class AlbFargateStack extends Stack {
         IHostedZone zone = HostedZone.fromLookup(this, "DomainZone", HostedZoneProviderProps.builder()
                 .domainName(System.getenv("FARGATE_URL")).build());
 
-        ApplicationListenerProps applicationListenerProps = ApplicationListenerProps.builder()
-                .name("ListenerTest")
-                // the properties below are optional
-                .certificate(certificate)
-                .port(443)
-                .protocol(ApplicationProtocol.HTTPS)
-                .sslPolicy(SslPolicy.RECOMMENDED)
-                .build();
+//        ApplicationListenerProps applicationListenerProps = ApplicationListenerProps.builder()
+//                .name("ListenerTest")
+//                // the properties below are optional
+//                .certificate(certificate)
+//                .port(443)
+//                .protocol(ApplicationProtocol.HTTPS)
+//                .sslPolicy(SslPolicy.RECOMMENDED)
+//                .build();
 
         List<ApplicationTargetProps> tarList = new ArrayList<ApplicationTargetProps>();
         tarList.add(ApplicationTargetProps.builder()
