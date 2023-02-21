@@ -87,7 +87,7 @@ public class AlbFargateStack extends Stack {
                 .domainName(System.getenv("FARGATE_URL")).build());
 
         ApplicationListenerProps applicationListenerProps = ApplicationListenerProps.builder()
-                .name("name")
+                .name("ListenerTest")
                 // the properties below are optional
                 .certificate(certificate)
                 .port(443)
