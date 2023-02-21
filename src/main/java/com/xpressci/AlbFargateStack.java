@@ -98,7 +98,7 @@ public class AlbFargateStack extends Stack {
         List<ApplicationTargetProps> tarList = new ArrayList<ApplicationTargetProps>();
         tarList.add(ApplicationTargetProps.builder()
                 .containerPort(80)
-                .listener(applicationListenerProps.getName())
+//                .listener(applicationListenerProps.getName())
                 .hostHeader(System.getenv("FARGATE_URL"))
                 .build());
 
