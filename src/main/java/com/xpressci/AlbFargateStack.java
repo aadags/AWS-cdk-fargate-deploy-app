@@ -112,8 +112,8 @@ public class AlbFargateStack extends Stack {
 //                .domainName(System.getenv("FARGATE_URL"))
 //                .domainZone(zone)
 
-        ARecord.Builder.create(this, "ARecord")
-                .target(RecordTarget.fromAlias(new LoadBalancerTarget(loadBalancedFargateService.getLoadBalancers().get(0)))).zone(zone).build();
+//        ARecord.Builder.create(this, "ARecord")
+//                .target(RecordTarget.fromAlias(new LoadBalancerTarget(loadBalancedFargateService.getLoadBalancers().get(0)))).zone(zone).build();
 
         loadBalancedFargateService.getTargetGroups().get(0).configureHealthCheck(
                 HealthCheck.builder().path(System.getenv("FARGATE_HEALTH_CHECK")).healthyThresholdCount(2).unhealthyThresholdCount(5).build()
