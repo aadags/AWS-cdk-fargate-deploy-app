@@ -91,6 +91,8 @@ public class AlbFargateStack extends Stack {
                 .taskImageOptions(applicationLoadBalancedTaskImageOptions)
                 .memoryLimitMiB(Integer.valueOf(System.getenv("FARGATE_MEMORY")))       // Default is 512
                 .assignPublicIp(true)
+                .minHealthyPercent(100)
+                .maxHealthyPercent(200)
                 .serviceName(System.getenv("FARGATE_APP_NAME"))
                 .taskImageOptions(applicationLoadBalancedTaskImageOptions)
                 .certificate(certificate)
