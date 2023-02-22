@@ -124,7 +124,7 @@ public class AlbFargateStack extends Stack {
                     .build());
         }
 
-        ARecord.Builder.create(this, "ARecord")
+        ARecord.Builder.create(this, "ARecord").recordName(System.getenv("FARGATE_URL"))
                 .target(RecordTarget.fromAlias(new LoadBalancerTarget(loadBalancedFargateService.getLoadBalancer()))).zone(zone).build();
 
 
