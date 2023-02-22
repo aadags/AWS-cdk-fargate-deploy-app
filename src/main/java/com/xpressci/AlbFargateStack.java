@@ -92,9 +92,7 @@ public class AlbFargateStack extends Stack {
                 .memoryLimitMiB(Integer.valueOf(System.getenv("FARGATE_MEMORY")))       // Default is 512
                 .assignPublicIp(true)
                 .serviceName(System.getenv("FARGATE_APP_NAME"))
-                .taskImageOptions(ApplicationLoadBalancedTaskImageOptions.builder()
-                        .image(ContainerImage.fromRegistry("amazon/amazon-ecs-sample"))
-                        .build())
+                .taskImageOptions(applicationLoadBalancedTaskImageOptions)
                 .certificate(certificate)
                 .circuitBreaker(DeploymentCircuitBreaker.builder().rollback(true).build())
                 .build();
