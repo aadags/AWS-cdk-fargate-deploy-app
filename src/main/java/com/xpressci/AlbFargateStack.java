@@ -15,9 +15,8 @@ import software.amazon.awscdk.services.ec2.*;
 import software.amazon.awscdk.services.ecr.Repository;
 import software.amazon.awscdk.services.ecs.*;
 import software.amazon.awscdk.services.ecs.patterns.*;
-import software.amazon.awscdk.services.elasticloadbalancingv2.ApplicationProtocol;
+import software.amazon.awscdk.services.elasticloadbalancingv2.*;
 import software.amazon.awscdk.services.elasticloadbalancingv2.HealthCheck;
-import software.amazon.awscdk.services.elasticloadbalancingv2.SslPolicy;
 import software.amazon.awscdk.services.route53.*;
 import software.amazon.awscdk.services.route53.targets.LoadBalancerTarget;
 import software.constructs.Construct;
@@ -63,21 +62,19 @@ public class AlbFargateStack extends Stack {
 //        }
 
         //image
-        ApplicationLoadBalancedTaskImageProps applicationLoadBalancedTaskImageProps;
+        ApplicationLoadBalancedTaskImageOptions applicationLoadBalancedTaskImageOptions;
         if(System.getenv("FARGATE_APP_PORT").isEmpty()) {
-            applicationLoadBalancedTaskImageProps = ApplicationLoadBalancedTaskImageProps.builder()
+            applicationLoadBalancedTaskImageOptions = ApplicationLoadBalancedTaskImageOptions.builder()
                     .image(ContainerImage.fromEcrRepository(Repository.fromRepositoryArn(this, "MyRepo", System.getenv("FARGATE_REPO_ARN"))))
                     .containerName("web")
                     .enableLogging(true)
 //                    .environment(env)
                     .build();
         } else {
-            List<Integer> envList = new ArrayList<Integer>();
-            envList.add(Integer.valueOf(System.getenv("FARGATE_APP_PORT")));
-            applicationLoadBalancedTaskImageProps = ApplicationLoadBalancedTaskImageProps.builder()
+            applicationLoadBalancedTaskImageOptions = ApplicationLoadBalancedTaskImageOptions.builder()
                     .image(ContainerImage.fromEcrRepository(Repository.fromRepositoryArn(this, "MyRepo", System.getenv("FARGATE_REPO_ARN"))))
                     .containerName("web")
-                    .containerPorts(envList)
+                    .containerPort(Integer.valueOf(System.getenv("FARGATE_APP_PORT")))
                     .enableLogging(true)
 //                    .environment(env)
                     .build();
@@ -86,36 +83,29 @@ public class AlbFargateStack extends Stack {
         IHostedZone zone = HostedZone.fromLookup(this, "DomainZone", HostedZoneProviderProps.builder()
                 .domainName(System.getenv("FARGATE_URL")).build());
 
-        List<ApplicationTargetProps> tarList = new ArrayList<ApplicationTargetProps>();
-        tarList.add(ApplicationTargetProps.builder()
-                .containerPort(80)
-                .hostHeader(System.getenv("FARGATE_URL"))
-                .priority(1)
-                .build());
 
-        // Create a load-balanced Fargate service and make it public
-        ApplicationMultipleTargetGroupsFargateService loadBalancedFargateService = ApplicationMultipleTargetGroupsFargateService.Builder.create(this, "MyFargateService")
+        ApplicationLoadBalancedFargateService loadBalancedFargateService = ApplicationLoadBalancedFargateService.Builder.create(this, "Service")
                 .cluster(cluster)           // Required
                 .cpu(Integer.valueOf(System.getenv("FARGATE_CPU")))                   // Default is 256
                 .desiredCount(Integer.valueOf(System.getenv("FARGATE_SCALE")))            // Default is 1
-                .taskImageOptions(applicationLoadBalancedTaskImageProps)
+                .taskImageOptions(applicationLoadBalancedTaskImageOptions)
                 .memoryLimitMiB(Integer.valueOf(System.getenv("FARGATE_MEMORY")))       // Default is 512
                 .assignPublicIp(true)
                 .serviceName(System.getenv("FARGATE_APP_NAME"))
-                .targetGroups(tarList)
+                .taskImageOptions(ApplicationLoadBalancedTaskImageOptions.builder()
+                        .image(ContainerImage.fromRegistry("amazon/amazon-ecs-sample"))
+                        .build())
+                .certificate(certificate)
+                .circuitBreaker(DeploymentCircuitBreaker.builder().rollback(true).build())
                 .build();
 
-//        loadBalancedFargateService.getLoadBalancers().get(0)
+        loadBalancedFargateService.getListener().addAction("Action", AddApplicationActionProps.builder()
+                .priority(10)
+                .conditions(List.of(ListenerCondition.hostHeaders(List.of(System.getenv("FARGATE_URL")))))
+                .action(ListenerAction.forward(List.of(loadBalancedFargateService.getTargetGroup())))
+                .build());
 
-//                .certificate(certificate)
-//                .circuitBreaker(DeploymentCircuitBreaker.builder().rollback(true).build())
-//                .domainName(System.getenv("FARGATE_URL"))
-//                .domainZone(zone)
-
-//        ARecord.Builder.create(this, "ARecord")
-//                .target(RecordTarget.fromAlias(new LoadBalancerTarget(loadBalancedFargateService.getLoadBalancers().get(0)))).zone(zone).build();
-
-        loadBalancedFargateService.getTargetGroups().get(0).configureHealthCheck(
+        loadBalancedFargateService.getTargetGroup().configureHealthCheck(
                 HealthCheck.builder().path(System.getenv("FARGATE_HEALTH_CHECK")).healthyThresholdCount(2).unhealthyThresholdCount(5).build()
         );
 
@@ -133,6 +123,10 @@ public class AlbFargateStack extends Stack {
                     .targetUtilizationPercent(50)
                     .build());
         }
+
+        ARecord.Builder.create(this, "ARecord")
+                .target(RecordTarget.fromAlias(new LoadBalancerTarget(loadBalancedFargateService.getLoadBalancer()))).zone(zone).build();
+
 
     }
 }
