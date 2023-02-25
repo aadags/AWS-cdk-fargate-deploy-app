@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import software.amazon.awscdk.*;
 import software.amazon.awscdk.services.applicationautoscaling.EnableScalingProps;
 import software.amazon.awscdk.services.certificatemanager.Certificate;
+import software.amazon.awscdk.services.certificatemanager.CertificateValidation;
 import software.amazon.awscdk.services.certificatemanager.ICertificate;
 import software.amazon.awscdk.services.codepipeline.Artifact;
 import software.amazon.awscdk.services.codepipeline.IStage;
@@ -49,9 +50,6 @@ public class AlbFargateStack extends Stack {
         Cluster cluster = new Cluster(this, "FargateCluster", ClusterProps.builder().vpc(vpc)
                 .clusterName(System.getenv("FARGATE_CLUSTER")).build());
 
-        //SSL
-        ICertificate certificate = Certificate.fromCertificateArn(this, "Certificate", System.getenv("FARGATE_SSL"));
-
         //Environment
 //        ObjectMapper mapper = new ObjectMapper();
 //        Map<String, String> env = new HashMap<>();
@@ -83,6 +81,26 @@ public class AlbFargateStack extends Stack {
         IHostedZone zone = HostedZone.fromLookup(this, "DomainZone", HostedZoneProviderProps.builder()
                 .domainName(System.getenv("FARGATE_URL")).build());
 
+        ICertificate certificate;
+        if(System.getenv("FARGATE_SUBDOMAIN").equalsIgnoreCase("www")) {
+            certificate = Certificate.Builder.create(this, "Certificate")
+                    .domainName(System.getenv("FARGATE_SUBDOMAIN") + System.getenv("FARGATE_URL"))
+                    .subjectAlternativeNames(List.of(System.getenv("FARGATE_URL")))
+                    .validation(CertificateValidation.fromDns(zone))
+                    .build();
+        } else {
+            certificate = Certificate.Builder.create(this, "Certificate")
+                    .domainName(System.getenv("FARGATE_SUBDOMAIN") + System.getenv("FARGATE_URL"))
+                    .validation(CertificateValidation.fromDns(zone))
+                    .build();
+        }
+
+        int min = 100, max = 200;
+        if(Integer.valueOf(System.getenv("FARGATE_SCALE")) > 1)
+        {
+            min = 50;
+            max = 100;
+        }
 
         ApplicationLoadBalancedFargateService loadBalancedFargateService = ApplicationLoadBalancedFargateService.Builder.create(this, "Service")
                 .cluster(cluster)           // Required
@@ -91,8 +109,8 @@ public class AlbFargateStack extends Stack {
                 .taskImageOptions(applicationLoadBalancedTaskImageOptions)
                 .memoryLimitMiB(Integer.valueOf(System.getenv("FARGATE_MEMORY")))       // Default is 512
                 .assignPublicIp(true)
-                .minHealthyPercent(100)
-                .maxHealthyPercent(200)
+                .minHealthyPercent(min)
+                .maxHealthyPercent(max)
                 .serviceName(System.getenv("FARGATE_APP_NAME"))
                 .taskImageOptions(applicationLoadBalancedTaskImageOptions)
                 .certificate(certificate)
