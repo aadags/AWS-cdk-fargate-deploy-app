@@ -142,9 +142,13 @@ public class AlbFargateStack extends Stack {
                     .build());
         }
 
-        ARecord.Builder.create(this, "ARecord").recordName(System.getenv("FARGATE_URL"))
+        ARecord.Builder.create(this, "ARecord").recordName(System.getenv("FARGATE_SUBDOMAIN") + System.getenv("FARGATE_URL"))
                 .target(RecordTarget.fromAlias(new LoadBalancerTarget(loadBalancedFargateService.getLoadBalancer()))).zone(zone).build();
 
+        if(System.getenv("FARGATE_SUBDOMAIN").equalsIgnoreCase("www")) {
+            ARecord.Builder.create(this, "ARecord").recordName(System.getenv("FARGATE_URL"))
+                    .target(RecordTarget.fromAlias(new LoadBalancerTarget(loadBalancedFargateService.getLoadBalancer()))).zone(zone).build();
 
+        }
     }
 }
