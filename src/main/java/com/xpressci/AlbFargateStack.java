@@ -142,11 +142,11 @@ public class AlbFargateStack extends Stack {
             );
 
             scalableTarget.scaleOnCpuUtilization("CpuScaling", CpuUtilizationScalingProps.builder()
-                    .targetUtilizationPercent(50)
+                    .targetUtilizationPercent(90)
                     .build());
 
             scalableTarget.scaleOnMemoryUtilization("MemoryScaling", MemoryUtilizationScalingProps.builder()
-                    .targetUtilizationPercent(50)
+                    .targetUtilizationPercent(90)
                     .build());
         }
 
