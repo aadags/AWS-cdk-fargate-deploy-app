@@ -117,11 +117,19 @@ public class AlbFargateStack extends Stack {
                 .circuitBreaker(DeploymentCircuitBreaker.builder().rollback(true).build())
                 .build();
 
-        loadBalancedFargateService.getListener().addAction("Action", AddApplicationActionProps.builder()
-                .priority(10)
-                .conditions(List.of(ListenerCondition.hostHeaders(List.of(System.getenv("FARGATE_URL")))))
-                .action(ListenerAction.forward(List.of(loadBalancedFargateService.getTargetGroup())))
-                .build());
+        if(System.getenv("FARGATE_SUBDOMAIN").equalsIgnoreCase("www")) {
+            loadBalancedFargateService.getListener().addAction("Action", AddApplicationActionProps.builder()
+                    .priority(10)
+                    .conditions(List.of(ListenerCondition.hostHeaders(List.of(System.getenv("FARGATE_SUBDOMAIN") + System.getenv("FARGATE_URL"), System.getenv("FARGATE_URL")))))
+                    .action(ListenerAction.forward(List.of(loadBalancedFargateService.getTargetGroup())))
+                    .build());
+        } else {
+            loadBalancedFargateService.getListener().addAction("Action", AddApplicationActionProps.builder()
+                    .priority(10)
+                    .conditions(List.of(ListenerCondition.hostHeaders(List.of(System.getenv("FARGATE_SUBDOMAIN") + System.getenv("FARGATE_URL")))))
+                    .action(ListenerAction.forward(List.of(loadBalancedFargateService.getTargetGroup())))
+                    .build());
+        }
 
         loadBalancedFargateService.getTargetGroup().configureHealthCheck(
                 HealthCheck.builder().path(System.getenv("FARGATE_HEALTH_CHECK")).healthyThresholdCount(2).unhealthyThresholdCount(5).build()
