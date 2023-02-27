@@ -84,13 +84,13 @@ public class AlbFargateStack extends Stack {
         ICertificate certificate;
         if(System.getenv("FARGATE_SUBDOMAIN").equalsIgnoreCase("www")) {
             certificate = Certificate.Builder.create(this, "Certificate")
-                    .domainName(System.getenv("FARGATE_SUBDOMAIN") + System.getenv("FARGATE_URL"))
+                    .domainName(System.getenv("FARGATE_SUBDOMAIN")  + "." +  System.getenv("FARGATE_URL"))
                     .subjectAlternativeNames(List.of(System.getenv("FARGATE_URL")))
                     .validation(CertificateValidation.fromDns(zone))
                     .build();
         } else {
             certificate = Certificate.Builder.create(this, "Certificate")
-                    .domainName(System.getenv("FARGATE_SUBDOMAIN") + System.getenv("FARGATE_URL"))
+                    .domainName(System.getenv("FARGATE_SUBDOMAIN")  + "." +  System.getenv("FARGATE_URL"))
                     .validation(CertificateValidation.fromDns(zone))
                     .build();
         }
@@ -120,13 +120,13 @@ public class AlbFargateStack extends Stack {
         if(System.getenv("FARGATE_SUBDOMAIN").equalsIgnoreCase("www")) {
             loadBalancedFargateService.getListener().addAction("Action", AddApplicationActionProps.builder()
                     .priority(10)
-                    .conditions(List.of(ListenerCondition.hostHeaders(List.of(System.getenv("FARGATE_SUBDOMAIN") + System.getenv("FARGATE_URL"), System.getenv("FARGATE_URL")))))
+                    .conditions(List.of(ListenerCondition.hostHeaders(List.of(System.getenv("FARGATE_SUBDOMAIN")  + "." +  System.getenv("FARGATE_URL"), System.getenv("FARGATE_URL")))))
                     .action(ListenerAction.forward(List.of(loadBalancedFargateService.getTargetGroup())))
                     .build());
         } else {
             loadBalancedFargateService.getListener().addAction("Action", AddApplicationActionProps.builder()
                     .priority(10)
-                    .conditions(List.of(ListenerCondition.hostHeaders(List.of(System.getenv("FARGATE_SUBDOMAIN") + System.getenv("FARGATE_URL")))))
+                    .conditions(List.of(ListenerCondition.hostHeaders(List.of(System.getenv("FARGATE_SUBDOMAIN")  + "." +  System.getenv("FARGATE_URL")))))
                     .action(ListenerAction.forward(List.of(loadBalancedFargateService.getTargetGroup())))
                     .build());
         }
@@ -150,7 +150,7 @@ public class AlbFargateStack extends Stack {
                     .build());
         }
 
-        ARecord.Builder.create(this, "ARecord").recordName(System.getenv("FARGATE_SUBDOMAIN") + System.getenv("FARGATE_URL"))
+        ARecord.Builder.create(this, "ARecord").recordName(System.getenv("FARGATE_SUBDOMAIN") + "." + System.getenv("FARGATE_URL"))
                 .target(RecordTarget.fromAlias(new LoadBalancerTarget(loadBalancedFargateService.getLoadBalancer()))).zone(zone).build();
 
         if(System.getenv("FARGATE_SUBDOMAIN").equalsIgnoreCase("www")) {
