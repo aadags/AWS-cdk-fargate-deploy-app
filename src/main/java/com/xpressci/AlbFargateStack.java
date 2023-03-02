@@ -82,11 +82,18 @@ public class AlbFargateStack extends Stack {
                 .domainName(System.getenv("FARGATE_URL")).build());
 
         ICertificate certificate;
+        if(System.getenv("FARGATE_SUBDOMAIN").equalsIgnoreCase("www")) {
             certificate = Certificate.Builder.create(this, "Certificate")
-                    .domainName("*." +  System.getenv("FARGATE_URL"))
+                    .domainName(System.getenv("FARGATE_SUBDOMAIN")  + "." +  System.getenv("FARGATE_URL"))
                     .subjectAlternativeNames(List.of(System.getenv("FARGATE_URL")))
                     .validation(CertificateValidation.fromDns(zone))
                     .build();
+        } else {
+            certificate = Certificate.Builder.create(this, "Certificate")
+                    .domainName(System.getenv("FARGATE_SUBDOMAIN")  + "." +  System.getenv("FARGATE_URL"))
+                    .validation(CertificateValidation.fromDns(zone))
+                    .build();
+        }
 
         int min = 100, max = 200;
         if(Integer.valueOf(System.getenv("FARGATE_SCALE")) > 1)
